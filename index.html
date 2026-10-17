@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>무한의 계단</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            color: #fff;
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            width: 360px;
+            height: 520px;
+            background: linear-gradient(to bottom, #2b5876, #4e4376);
+            border: 4px solid #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.85);
+            z-index: 10;
+        }
+        .hidden { display: none !important; }
+        h1 { margin-bottom: 5px; color: #ffeb3b; text-shadow: 2px 2px #ff5722; font-size: 28px; }
+        p { margin: 5px 0 15px 0; font-size: 13px; color: #ddd; text-align: center; line-height: 1.4; padding: 0 15px; }
+        
+        .character-select {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .char-card {
+            width: 65px;
+            height: 85px;
+            border: 3px solid #555;
+            border-radius: 8px;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .char-card.selected {
+            border-color: #ffeb3b;
+            background: #444;
+            transform: scale(1.05);
+        }
+        .char-preview {
+            width: 26px;
+            height: 38px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+
+        button {
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 22px;
+            cursor: pointer;
+            box-shadow: 0 4px #d84315;
+            transition: 0.1s;
+        }
+        button:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 #d84315;
+        }
+
+        #ui-bar {
+            position: absolute;
+            top: 12px;
+            left: 15px;
+            right: 15px;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        #gauge-container {
+            width: 100%;
+            height: 14px;
+            background: rgba(0,0,0,0.6);
+            border-radius: 7px;
+            overflow: hidden;
+            border: 2px solid #fff;
+        }
+        #gauge-fill {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, #f44336, #ffeb3b, #4caf50);
+            transition: width 0.05s linear;
+        }
+        #score-board {
+            font-size: 22px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            text-align: center;
+            color: #fff;
+        }
+
+        #countdown-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+            font-weight: bold;
+            color: #ffeb3b;
+            text-shadow: 0 0 20px #ff5722;
+            z-index: 20;
+        }
+
+        /* 모바일 터치 패드 */
+        #touch-controls {
+            position: absolute;
+            bottom: 15px;
+            left: 0; right: 0;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 20px;
+            z-index: 5;
+        }
+        .touch-btn {
+            width: 100px;
+            height: 50px;
+            background: rgba(255,255,255,0.25);
+            border: 2px solid #fff;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- 시작 화면 -->
+        <div id="start-screen" class="screen">
+            <h1>무한의 계단</h1>
+            <p><strong>SPACE</strong>: 앞으로 전진<br><strong>CTRL</strong>: 방향전환 후 전진<br><strong>ESC</strong>: 일시정지</p>
+            <p style="font-size: 11px; color: #ffeb3b; margin-bottom: 8px;">캐릭터 선택</p>
+            <div class="character-select">
+                <div class="char-card selected" onclick="selectChar(0, '#e74c3c', '#c0392b')">
+                    <div class="char-preview" style="background:#e74c3c;"></div>
+                    <span style="font-size:11px;">기본이</span>
+                </div>
+                <div class="char-card" onclick="selectChar(1, '#3498db', '#2980b9')">
+                    <div class="char-preview" style="background:#3498db;"></div>
+                    <span style="font-size:11px;">닌자</span>
+                </div>
+                <div class="char-card" onclick="selectChar(2, '#9b59b6', '#8e44ad')">
+                    <div class="char-preview" style="background:#9b59b6;"></div>
+                    <span style="font-size:11px;">로봇</span>
+                </div>
+                <div class="char-card" onclick="selectChar(3, '#e67e22', '#d35400')">
+                    <div class="char-preview" style="background:#e67e22;"></div>
+                    <span style="font-size:11px;">고양이</span>
+                </div>
+            </div>
+            <button onclick="startGame()">게임 시작</button>
+        </div>
+
+        <!-- 게임 오버 화면 -->
+        <div id="gameover-screen" class="screen hidden">
+            <h1>GAME OVER</h1>
+            <p id="final-score" style="font-size: 18px; margin-bottom: 10px;">획득 계단: 0</p>
+            <p id="restart-timer-msg" style="font-size: 14px; color: #ffeb3b; margin-bottom: 15px;">5초 안에 [R]를 누르면 즉시 재시작!</p>
+            <button onclick="restartGameImmediate()">바로 다시하기 (R)</button>
+        </div>
+
+        <!-- 일시정지 화면 -->
+        <div id="pause-screen" class="screen hidden">
+            <h1>PAUSED</h1>
+            <p style="margin-bottom: 20px;">일시정지 되었습니다.</p>
+            <button onclick="resumeGame()">계속하기 (ESC)</button>
+        </div>
+
+        <!-- 3초 카운트다운 오버레이 -->
+        <div id="countdown-overlay" class="hidden">3</div>
+
+        <!-- 게임 플레이 UI -->
+        <div id="ui-bar" class="hidden">
+            <div id="gauge-container">
+                <div id="gauge-fill"></div>
+            </div>
+            <div id="score-board">0 계단</div>
+        </div>
+
+        <!-- 모바일 가상 버튼 -->
+        <div id="touch-controls" class="hidden">
+            <div class="touch-btn" ontouchstart="handleTouch(false)">SPACE</div>
+            <div class="touch-btn" ontouchstart="handleTouch(true)">CTRL (방향)</div>
+        </div>
+
+        <canvas id="gameCanvas" width="360" height="520"></canvas>
+    </div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let gameState = "START";
+    let score = 0;
+    let gauge = 100;
+    let selectedCharacter = { id: 0, color: '#e74c3c', subColor: '#c0392b' };
+
+    let stairs = [];
+    const maxStairs = 30;
+
+    // 계단 크기 및 이동 보정값
+    const STAIR_W = 60;
+    const STAIR_H = 20;
+    const STEP_X = 40;
+    const STEP_Y = 24;
+
+    let player = {
+        stepIndex: 0,
+        dir: 1, // 1: 오른쪽, -1: 왼쪽
+        color: '#e74c3c',
+        subColor: '#c0392b',
+        animOffset: { x: 0, y: 0 }
+    };
+
+    let camera = { x: 0, y: 0 };
+    let gameOverTimer = null;
+    let gameOverCountdownValue = 5;
+    let pauseCountdownValue = 3;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+        if (!audioCtx) return;
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        if (type === 'step') {
+            osc.frequency.setValueAtTime(300 + (score % 20) * 15, now);
+            osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            osc.start(now);
+            osc.stop(now + 0.08);
+        } else if (type === 'gameover') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.linearRampToValueAtTime(80, now + 0.4);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+        } else if (type === 'count') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        }
+    }
+
+    function selectChar(id, color, subColor) {
+        selectedCharacter = { id, color, subColor };
+        document.querySelectorAll('.char-card').forEach((card, idx) => {
+            if (idx === id) card.classList.add('selected');
+            else card.classList.remove('selected');
+        });
+    }
+
+    function initStairs() {
+        stairs = [];
+        let currX = 0;
+        let currY = 0;
+        let currentDir = 1;
+
+        // 첫 번째 시작 계단
+        stairs.push({ x: currX, y: currY, dir: currentDir });
+
+        // 연속된 계단 생성 (완벽 연결)
+        for (let i = 1; i < maxStairs; i++) {
+            if (Math.random() < 0.5) currentDir *= -1;
+            currX += STEP_X * currentDir;
+            currY -= STEP_Y;
+            stairs.push({ x: currX, y: currY, dir: currentDir });
+        }
+    }
+
+    function startGame() {
+        document.getElementById("start-screen").classList.add("hidden");
+        document.getElementById("gameover-screen").classList.add("hidden");
+        document.getElementById("pause-screen").classList.add("hidden");
+        document.getElementById("ui-bar").classList.remove("hidden");
+        document.getElementById("touch-controls").classList.remove("hidden");
+
+        player.color = selectedCharacter.color;
+        player.subColor = selectedCharacter.subColor;
+        player.stepIndex = 0;
+        player.dir = 1;
+        score = 0;
+        gauge = 100;
+
+        initStairs();
+        camera.x = stairs[0].x;
+        camera.y = stairs[0].y;
+
+        gameState = "PLAYING";
+    }
+
+    function triggerGameOver() {
+        gameState = "GAMEOVER";
+        playSound('gameover');
+        document.getElementById("ui-bar").classList.add("hidden");
+        document.getElementById("touch-controls").classList.add("hidden");
+        document.getElementById("final-score").innerText = `획득 계단: ${score} 계단`;
+        
+        gameOverCountdownValue = 5;
+        document.getElementById("restart-timer-msg").innerText = `5초 안에 [R]를 누르면 즉시 재시작! (${gameOverCountdownValue}초)`;
+        document.getElementById("gameover-screen").classList.remove("hidden");
+
+        if (gameOverTimer) clearInterval(gameOverTimer);
+        gameOverTimer = setInterval(() => {
+            gameOverCountdownValue--;
+            if (gameOverCountdownValue > 0) {
+                document.getElementById("restart-timer-msg").innerText = `5초 안에 [R]를 누르면 즉시 재시작! (${gameOverCountdownValue}초)`;
+            } else {
+                clearInterval(gameOverTimer);
+                goToSelectScreen();
+            }
+        }, 1000);
+    }
+
+    function restartGameImmediate() {
+        if (gameOverTimer) clearInterval(gameOverTimer);
+        document.getElementById("gameover-screen").classList.add("hidden");
+        startGame();
+    }
+
+    function goToSelectScreen() {
+        if (gameOverTimer) clearInterval(gameOverTimer);
+        document.getElementById("gameover-screen").classList.add("hidden");
+        document.getElementById("start-screen").classList.remove("hidden");
+        gameState = "START";
+    }
+
+    function togglePause() {
+        if (gameState === "PLAYING") {
+            gameState = "PAUSED";
+            document.getElementById("pause-screen").classList.remove("hidden");
+        } else if (gameState === "PAUSED") {
+            resumeGame();
+        }
+    }
+
+    function resumeGame() {
+        document.getElementById("pause-screen").classList.add("hidden");
+        startCountdown();
+    }
+
+    function startCountdown() {
+        gameState = "COUNTDOWN";
+        pauseCountdownValue = 3;
+        const overlay = document.getElementById("countdown-overlay");
+        overlay.innerText = pauseCountdownValue;
+        overlay.classList.remove("hidden");
+        playSound('count');
+
+        let countInterval = setInterval(() => {
+            pauseCountdownValue--;
+            if (pauseCountdownValue > 0) {
+                overlay.innerText = pauseCountdownValue;
+                playSound('count');
+            } else {
+                clearInterval(countInterval);
+                overlay.classList.add("hidden");
+                gameState = "PLAYING";
+            }
+        }, 1000);
+    }
+
+    window.addEventListener("keydown", (e) => {
+        if (e.code === "Escape") {
+            if (gameState === "PLAYING" || gameState === "PAUSED") {
+                togglePause();
+            }
+            return;
+        }
+
+        if (gameState === "GAMEOVER" && (e.code === "KeyR" || e.key.toLowerCase() === "r")) {
+            restartGameImmediate();
+            return;
+        }
+
+        if (gameState !== "PLAYING") return;
+
+        if (e.code === "Space") {
+            e.preventDefault();
+            movePlayer(false);
+        } else if (e.code === "ControlLeft" || e.code === "ControlRight" || e.key === "Control") {
+            e.preventDefault();
+            movePlayer(true);
+        }
+    });
+
+    function handleTouch(isTurn) {
+        if (gameState !== "PLAYING") return;
+        movePlayer(isTurn);
+    }
+
+    function movePlayer(isTurn) {
+        if (isTurn) {
+            player.dir *= -1; 
+        }
+
+        const nextStair = stairs[player.stepIndex + 1];
+
+        if (nextStair && player.dir === nextStair.dir) {
+            score++;
+            playSound('step');
+            
+            gauge = Math.min(100, gauge + 10); 
+            player.stepIndex++;
+
+            player.animOffset = { x: -player.dir * 10, y: -8 };
+            setTimeout(() => { player.animOffset = { x: 0, y: 0 }; }, 50);
+
+            // 새 계단 동적 추가
+            let lastStair = stairs[stairs.length - 1];
+            let nextDir = Math.random() < 0.55 ? lastStair.dir : -lastStair.dir;
+            stairs.push({
+                x: lastStair.x + STEP_X * nextDir,
+                y: lastStair.y - STEP_Y,
+                dir: nextDir
+            });
+        } else {
+            triggerGameOver();
+        }
+    }
+
+    function update() {
+        if (gameState === "PLAYING") {
+            let speedMultiplier = 1 + Math.min(1.5, score * 0.025); 
+            gauge -= 0.28 * speedMultiplier;
+
+            if (gauge <= 0) {
+                gauge = 0;
+                triggerGameOver();
+            }
+            document.getElementById("gauge-fill").style.width = gauge + "%";
+            document.getElementById("score-board").innerText = `${score} 계단`;
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (gameState === "PLAYING" || gameState === "PAUSED" || gameState === "COUNTDOWN" || gameState === "GAMEOVER") {
+            let currentStair = stairs[player.stepIndex];
+
+            // 부드러운 카메라 팔로우
+            camera.x += (currentStair.x - camera.x) * 0.2;
+            camera.y += (currentStair.y - camera.y) * 0.2;
+
+            ctx.save();
+            ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 + 100 - camera.y);
+
+            // 1. 계단 렌더링 (아래에서부터 위로)
+            for (let i = 0; i < stairs.length; i++) {
+                let s = stairs[i];
+
+                // 화면 밖 자르기 (성능 최적화)
+                if (Math.abs(s.y - camera.y) > 400) continue;
+
+                let drawX = s.x - STAIR_W / 2;
+                let drawY = s.y;
+
+                // 계단 블록 (기본 / 현재 위치 색상 구분)
+                if (i === player.stepIndex) {
+                    ctx.fillStyle = "#f1c40f"; // 활성화 계단 (노란색)
+                } else {
+                    ctx.fillStyle = "#ffffff"; // 일반 계단 (흰색)
+                }
+
+                ctx.fillRect(drawX, drawY, STAIR_W, STAIR_H);
+                ctx.strokeStyle = "#333";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(drawX, drawY, STAIR_W, STAIR_H);
+
+                // 계단 옆면 입체감 효과
+                ctx.fillStyle = (i === player.stepIndex) ? "#d35400" : "#bdc3c7";
+                ctx.fillRect(drawX, drawY + STAIR_H - 4, STAIR_W, 4);
+            }
+
+            // 2. 캐릭터 렌더링
+            let px = currentStair.x + player.animOffset.x - 12;
+            let py = currentStair.y - 36 + player.animOffset.y;
+
+            // 캐릭터 몸통
+            ctx.fillStyle = player.color;
+            ctx.fillRect(px, py, 24, 36);
+            ctx.strokeStyle = "#000";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px, py, 24, 36);
+
+            // 캐릭터 모자/헤어
+            ctx.fillStyle = player.subColor;
+            ctx.fillRect(px - 2, py, 28, 8);
+
+            // 캐릭터 눈 (바라보는 방향)
+            ctx.fillStyle = "#fff";
+            if (player.dir === 1) {
+                ctx.fillRect(px + 13, py + 12, 6, 6);
+                ctx.fillStyle = "#000";
+                ctx.fillRect(px + 16, py + 14, 3, 3);
+            } else {
+                ctx.fillRect(px + 5, py + 12, 6, 6);
+                ctx.fillStyle = "#000";
+                ctx.fillRect(px + 5, py + 14, 3, 3);
+            }
+
+            ctx.restore();
+        }
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+</script>
+
+</body>
+</html>
